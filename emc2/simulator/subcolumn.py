@@ -393,7 +393,6 @@ def set_q_n(model, hyd_type, is_conv=True, qc_flag=True, inv_rel_var=1):
                     q_profs[hyd_in_sub_loc[randlocs[-counter_4_valid:]], tt, j] = (
                         q_ic_mean[tt, j] * tot_hyd_in_sub[tt, j] - np.sum(rand_gamma_vals[:-counter_4_valid])) / \
                         (1 + counter_4_valid)
-
     else:
         q_profs = q_array / hyd_profs
         q_profs = np.tile(q_profs.values, (model.num_subcolumns, 1, 1))

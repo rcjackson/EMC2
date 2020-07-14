@@ -110,3 +110,95 @@ class SubcolumnDisplay(Display):
         cbar = plt.colorbar(mesh, ax=self.axes[subplot_index])
         cbar.set_label(cbar_label)
         return self.axes[subplot_index]
+
+
+    def plot_vertical_frequency_dist(self, variable, time=None, pressure_coords=True, title=None,
+                                     subplot_index=(0, ), percentile_boundaries=(5, 95), bins=None,
+                                     **kwargs):
+        """
+
+        Plot distribution of parameters in the subcolumn with height. The solid line will be the mean,
+        the shading between the dashed lines represents the data range within the percentiles.
+
+        Parameters
+        ----------
+        variable: str
+            The variable to take the frequency distribution in the vertical
+        pressure_coords: bool
+            True to plot in pressure coordinates.
+        time: tuple of str or None
+            Select time period to plot. If this is a tuple, then a start time and end time specified as a string
+            in the format of %Y-%m-%d %H:%M:%S must be specified for the interval in the tuple. For example,
+            ('2010-10-01 00:00:00', '2010-10-02 00:00:00'). If any of the %H:%M:%S portion of the date string
+            is left out, then the missing portions are assumed to be zero. i.e. '2010-10-01' means 00 UTC on
+            1 October 2010.
+        title: str or None
+            The title of the plot
+        subplot_index: tuple
+            The index of the subplot to make the plot in.
+        percentile_boundaries: tuple
+            The percentiles for the outer lines of the shaded plot.
+        kwargs
+
+        Returns
+        -------
+        heights, percentiles: float arrays
+            The height bins, percentiles of each quantity used in the plot.
+        axis: matplotlib axis handle
+            The matplotlib axis handle
+        """
+        ds_name = [x for x in self._arm.keys()][0]
+
+        if pressure_coords:
+            y_variable = self.model.height_dim
+        else:
+            y_variable = self.model.z_field
+
+        if bins is None:
+            bins = np.linspace(self.model.ds[y_variable].values.min(), self.model.ds[y_variable].values.max(), 50)
+
+        my_histogram = np.zeros((len(bins)-1, 3))
+        if time is None:
+            my_ds = self.model.ds[variable]
+        else:
+            my_ds = self.model.ds[variable].sel(time=slice(time[0], time[1]))
+            if not pressure_coords:
+                y_variable = self.model.ds[y_variable].sel(time=slice(time[0], time[1]))
+
+        for i in range(len(bins)-1):
+            if pressure_coords:
+                height_inds = np.logical_and(
+                    self.model.ds[self.model.height_dim].values >= bins[i], self.model.ds[self.model.height_dim].values < bins[i+1])
+                my_histogram[i, 0] = np.nanpercentile(my_ds.values[:, :, height_inds], percentile_boundaries[0])
+                my_histogram[i, 1] = np.nanpercentile(my_ds.values[:, :, height_inds], 50)
+                my_histogram[i, 2] = np.nanpercentile(my_ds.values[:, :, height_inds], percentile_boundaries[1])
+            else:
+                height_inds = np.logical_and(y_variable.values >= bins[i], y_variable.values < bins[i+1])
+                my_histogram[i, 0] = np.nanpercentile(my_ds.values[:, height_inds], percentile_boundaries[0])
+                my_histogram[i, 1] = np.nanpercentile(my_ds.values[:, height_inds], 50)
+                my_histogram[i, 2] = np.nanpercentile(my_ds.values[:, height_inds], percentile_boundaries[1])
+
+        bin_mids = (bins[:-1] + bins[1:]) / 2.0
+        self.axes[subplot_index].fill_betweenx(bin_mids, my_histogram[:, 0], my_histogram[:, 2], color='b', alpha=0.5)
+        self.axes[subplot_index].plot(my_histogram[:, 1], bin_mids, color='k', linewidth=2)
+        if "long_name" in my_ds.attrs and "units" in my_ds.attrs:
+            x_label = '%s [%s]' % (my_ds.attrs["long_name"],
+                                   my_ds.attrs["units"])
+        else:
+            x_label = variable
+
+        if "long_name" in self.model.ds[y_variable].attrs and "units" in self.model.ds[y_variable].attrs:
+            y_label = '%s [%s]' % (self.model.ds[y_variable].attrs["long_name"],
+                                   self.model.ds[y_variable].attrs["units"])
+        else:
+            y_label = y_variable
+        if pressure_coords:
+            self.axes[subplot_index].invert_yaxis()
+        self.axes[subplot_index].set_ylabel(y_label)
+        self.axes[subplot_index].set_xlabel(x_label)
+
+        if title is None:
+            title = ds_name + " " + variable
+        self.axes[subplot_index].set_title(title)
+
+        return bins, my_histogram, self.axes[subplot_index]

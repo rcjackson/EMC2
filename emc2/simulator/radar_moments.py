@@ -344,7 +344,6 @@ def _calc_sigma_d_tot_cl(tt, fits_ds, instrument, model, total_hydrometeor, dD, 
 def _calc_sigma_d_tot(tt, model, p_diam, v_tmp, fits_ds, total_hydrometeor, vd_tot, sub_q_array, dD, beta_p):
     Dims = vd_tot.shape
     sigma_d_numer = np.zeros((model.num_subcolumns, total_hydrometeor.shape[1]))
-
     num_diam = len(p_diam)
     mu = fits_ds["mu"].values.max()
     if tt % 50 == 0:
@@ -434,7 +433,7 @@ def _calculate_other_observables(tt, total_hydrometeor, fits_ds, model, instrume
         lambda_tmp = fits_ds["lambda"][:, tt, k].values.max(axis=0)
         if np.isnan(N_0_tmp):
             continue
-        p_diam = (instrument.mie_table[hyd_type]["p_diam"].values * 2)
+        p_diam = (instrument.mie_table[hyd_type]["p_diam"].values)
         mu_temp = fits_ds["mu"].values[:, tt, k]
         num_diam = len(p_diam)
         N_D = []
